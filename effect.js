@@ -830,11 +830,17 @@ o3djs.effect.createEffectFromFile = function(pack, url) {
  * @param {!o3d.Material} material Material for which to build the shader.
  * @param {string} effectType Type of effect to create ('phong', 'lambert',
  *     'constant').
+ * @param {{lights: number}} opt_options
+ *     Set 'lights' if multiple lights are to be used.
  * @return {{description: string, shader: string}} A description and the shader
  *     string.
  */
 o3djs.effect.buildStandardShaderString = function(material,
-                                                  effectType) {
+                                                  effectType,
+                                                  opt_options) {
+  if (!opt_options) {
+    opt_options = {};
+  }
   var p = o3djs.effect;
   var bumpSampler = material.getParam('bumpSampler');
   var bumpUVInterpolant;
@@ -1273,13 +1279,16 @@ o3djs.effect.buildStandardShaderString = function(material,
  * @param {!o3d.Material} material Material for which to build the shader.
  * @param {string} effectType Type of effect to create ('phong', 'lambert',
  *     'constant').
+ * @param {object=} opt_options Extra options for buildStandardShaderString
  * @return {o3d.Effect} The created effect.
  */
 o3djs.effect.getStandardShader = function(pack,
                                           material,
-                                          effectType) {
+                                          effectType,
+                                          opt_options) {
   var record = o3djs.effect.buildStandardShaderString(material,
-                                                      effectType);
+                                                      effectType,
+                                                      opt_options);
   var effects = pack.getObjectsByClassName('o3d.Effect');
   for (var ii = 0; ii < effects.length; ++ii) {
     if (effects[ii].name == record.description &&
