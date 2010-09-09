@@ -1113,8 +1113,7 @@ o3djs.effect.buildStandardShaderString = function(material,
         currentLightWorldPos + ' - ' +
         p.PIXEL_VARYING_PREFIX + 'surfacePosition);\n' +
         '    ' + p.FLOAT3 +
-        ' halfVector = normalize(surfaceToLight + ' +
-        p.PIXEL_VARYING_PREFIX + 'surfaceToView);\n' +
+        ' halfVector = normalize(surfaceToLight + surfaceToView);\n' +
         '    ' + p.FLOAT4 +
         ' litR = lit(dot(normal, surfaceToLight), \n' +
         '                    dot(normal, halfVector), shininess);\n' +
@@ -1352,15 +1351,18 @@ o3djs.effect.getStandardShader = function(pack,
  * @param {!o3djs.math.Vector3} lightPos Position of the default light.
  * @param {string} effectType Type of effect to create ('phong', 'lambert',
  *     'constant', 'blinn').
+ * @param {object=} opt_options Extra options for buildStandardShaderString
  * @return {boolean} True on success.
  */
 o3djs.effect.attachStandardShader = function(pack,
                                              material,
                                              lightPos,
-                                             effectType) {
+                                             effectType,
+                                             opt_options) {
   var effect = o3djs.effect.getStandardShader(pack,
                                               material,
-                                              effectType);
+                                              effectType,
+                                              opt_options);
   if (effect) {
     material.effect = effect;
     effect.createUniformParameters(material);
