@@ -842,8 +842,10 @@ o3djs.effect.buildStandardShaderString = function(material,
     opt_options = {};
   }
   var numLights = 0;
+  var currentLightWorldPos = 'lightWorldPos';
   if (opt_options.lights) {
     numLights = opt_options.lights;
+    currentLightWorldPos = 'lightWorldPosList[i]';
   }
   var p = o3djs.effect;
   var bumpSampler = material.getParam('bumpSampler');
@@ -899,8 +901,13 @@ o3djs.effect.buildStandardShaderString = function(material,
    * @return {string} The effect code for the common shader uniforms.
    */
   var buildCommonPixelUniforms = function() {
-    return 'uniform ' + p.FLOAT4 + ' lightColor;\n' +
-        'uniform ' + p.FLOAT3 + ' lightWorldPos' + ';\n';
+    if (numLights > 0) {
+      return 'uniform ' + p.FLOAT4 + ' lightColorList[' + numLights + '];\n' +
+          'uniform ' + p.FLOAT3 + ' lightWorldPosList[' + numLights + '];\n';
+    } else {
+      return 'uniform ' + p.FLOAT4 + ' lightColor;\n' +
+          'uniform ' + p.FLOAT3 + ' lightWorldPos' + ';\n';
+    }
   };
 
   /**
@@ -994,6 +1001,25 @@ o3djs.effect.buildStandardShaderString = function(material,
            p.matrixLoadOrder();
   };
 
+  function beginLightLoop() {
+    if (numLights) {
+      return '  ' + p.FLOAT4 + ' lightColorDiffuse = ' + p.FLOAT4 + '(0);\n' +
+          '  for (int i = 0; i < ' + numLights + '; i++) {\n';
+    } else {
+      return '';
+    }
+  };
+  function endLightLoop(diffuseExpression) {
+    if (numLights) {
+      return '    lightColorDiffuse += ' + 
+          'lightColorList[i] * ( ' + diffuseExpression + ');\n' +
+          '  }\n';
+    } else {
+      return '  ' + p.FLOAT4 + ' lightColorDiffuse = ' +
+          'lightColor * (' + diffuseExpression + ');';
+    }
+  };
+
   /**
    * Builds vertex and fragment shader string for the Lambert lighting type.
    * @param {!o3d.Material} material The material for which to build
@@ -1026,15 +1052,16 @@ o3djs.effect.buildStandardShaderString = function(material,
            getColorParam(material, 'ambient') +
            getColorParam(material, 'diffuse') +
            getNormalShaderCode() +
-           '  ' + p.FLOAT3 + ' surfaceToLight = normalize(' +
-           'lightWorldPos' + ' - ' +
+           beginLightLoop() +
+           '    ' + p.FLOAT3 + ' surfaceToLight = normalize(' +
+           currentLightWorldPos + ' - ' +
            p.PIXEL_VARYING_PREFIX + 'surfacePosition);\n' +
-           '  ' + p.FLOAT4 +
-           ' litR = lit(dot(normal, surfaceToLight), 0.0, 0.0);\n' +
+           '    ' + p.FLOAT4 +
+           '    litR = lit(dot(normal, surfaceToLight), 0.0, 0.0);\n' +
+           endLightLoop('ambient * diffuse + diffuse * litR.y') +
            p.endPixelShaderMain(p.FLOAT4 +
            '((emissive +\n' +
-           '      lightColor *' +
-           ' (ambient * diffuse + diffuse * litR.y)).rgb,\n' +
+           '      lightColorDiffuse).rgb,\n' +
            '          diffuse.a)') +
            p.entryPoints() +
            p.matrixLoadOrder();
@@ -1079,23 +1106,22 @@ o3djs.effect.buildStandardShaderString = function(material,
         getColorParam(material, 'diffuse') +
         getColorParam(material, 'specular') +
         getNormalShaderCode() +
-        '  ' + p.FLOAT3 + ' surfaceToLight = normalize(' +
-        'lightWorldPos' + ' - ' +
-        p.PIXEL_VARYING_PREFIX + 'surfacePosition);\n' +
         '  ' + p.FLOAT3 + ' surfaceToView = normalize(' +
         p.PIXEL_VARYING_PREFIX + 'surfaceToView);\n' +
-        '  ' + p.FLOAT3 +
+        beginLightLoop() +
+        '    ' + p.FLOAT3 + ' surfaceToLight = normalize(' +
+        currentLightWorldPos + ' - ' +
+        p.PIXEL_VARYING_PREFIX + 'surfacePosition);\n' +
+        '    ' + p.FLOAT3 +
         ' halfVector = normalize(surfaceToLight + ' +
         p.PIXEL_VARYING_PREFIX + 'surfaceToView);\n' +
-        '  ' + p.FLOAT4 +
+        '    ' + p.FLOAT4 +
         ' litR = lit(dot(normal, surfaceToLight), \n' +
         '                    dot(normal, halfVector), shininess);\n' +
+        endLightLoop('ambient * diffuse + diffuse * litR.y\n' +
+        '                  + specular * litR.z * specularFactor') +
         p.endPixelShaderMain( p.FLOAT4 +
-        '((emissive +\n' +
-        '  lightColor *' +
-        ' (ambient * diffuse + diffuse * litR.y +\n' +
-        '                        + specular * litR.z *' +
-        ' specularFactor)).rgb,\n' +
+        '((emissive + lightColorDiffuse).rgb,\n' +
         '      diffuse.a)') +
         p.entryPoints() +
         p.matrixLoadOrder();
@@ -1138,21 +1164,21 @@ o3djs.effect.buildStandardShaderString = function(material,
         getColorParam(material, 'diffuse') +
         getColorParam(material, 'specular') +
         getNormalShaderCode() +
-        '  ' + p.FLOAT3 + ' surfaceToLight = normalize(' +
-        'lightWorldPos' + ' - ' +
-        p.PIXEL_VARYING_PREFIX + 'surfacePosition);\n' +
         '  ' + p.FLOAT3 + ' surfaceToView = normalize(' +
         p.PIXEL_VARYING_PREFIX + 'surfaceToView);\n' +
-        '  ' + p.FLOAT3 +
+        beginLightLoop() +
+        '    ' + p.FLOAT3 + ' surfaceToLight = normalize(' +
+        currentLightWorldPos + ' - ' +
+        p.PIXEL_VARYING_PREFIX + 'surfacePosition);\n' +
+        '    ' + p.FLOAT3 +
         ' halfVector = normalize(surfaceToLight + surfaceToView);\n' +
-        '  ' + p.FLOAT4 +
+        '    ' + p.FLOAT4 +
         ' litR = lit(dot(normal, surfaceToLight), \n' +
         '                    dot(normal, halfVector), shininess);\n' +
+        endLightLoop('ambient * diffuse + diffuse * litR.y +\n' +
+        '                  + specular * litR.z * specularFactor') +
         p.endPixelShaderMain(p.FLOAT4 +
-        '((emissive +\n' +
-        '  lightColor * (ambient * diffuse + diffuse * litR.y +\n' +
-        '                        + specular * litR.z *' +
-        ' specularFactor)).rgb,\n' +
+        '((emissive + lightColorDiffuse).rgb,\n' +
         '      diffuse.a)') +
         p.entryPoints() +
         p.matrixLoadOrder();
