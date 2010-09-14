@@ -248,7 +248,12 @@ o3djs.io.loadTextFileSynchronous = function(url) {
   var error = 'loadTextFileSynchronous failed to load url "' + url + '"';
   var request;
   if (!o3djs.base.IsMSIE() && window.XMLHttpRequest) {
-    request = new XMLHttpRequest();
+    if (typeof(remoteXHR) == "undefined") {
+        request = new XMLHttpRequest();
+    }
+    else {
+        request = new remoteXHR();
+    }
     if (request.overrideMimeType) {
       request.overrideMimeType('text/plain');
     }
@@ -278,7 +283,12 @@ o3djs.io.loadTextFile = function(url, callback) {
   var error = 'loadTextFile failed to load url "' + url + '"';
   var request;
   if (!o3djs.base.IsMSIE() && window.XMLHttpRequest) {
-    request = new XMLHttpRequest();
+    if (typeof(remoteXHR) == "undefined") {
+        request = new XMLHttpRequest();
+    }
+    else {
+        request = new remoteXHR();
+    }
     if (request.overrideMimeType) {
       request.overrideMimeType('text/plain');
     }
